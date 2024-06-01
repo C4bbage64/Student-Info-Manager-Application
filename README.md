@@ -1,87 +1,54 @@
-# Project Name
+# Student Info Manager Application
 
-Welcome to the Project Name repository! This project focuses on [brief description of your project]. 
-
-## Table of Contents
-
-- [Introduction](#introduction)
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Configuration](#configuration)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
-
-## Introduction
-
-[Provide a detailed introduction to your project. Explain the purpose and goals of the project. Mention any relevant background information or context.]
+## Overview
+The Student Info Manager Application is a desktop application built with Java Swing to manage student information. It supports CRUD (Create, Read, Update, Delete) operations on student records and handles exceptions gracefully. The application reads and writes student data from/to text files.
 
 ## Features
+- Add new student records
+- Edit existing student records
+- Delete student records
+- View all student records
+- Exception handling with custom messages
+- Persistent storage of student data using text files
 
-- [Feature 1: Description of feature 1]
-- [Feature 2: Description of feature 2]
-- [Feature 3: Description of feature 3]
+## Class Diagram
+![Class Diagram](class_diagram.png)
+
+## Prerequisites
+- Java Development Kit (JDK) 8 or higher
+- An IDE like IntelliJ IDEA, Eclipse, or NetBeans
 
 ## Installation
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/your-username/student-info-manager.git
+    cd student-info-manager
+    ```
 
-To install and set up this project, follow these steps:
+2. Open the project in your IDE.
 
-1. **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/your-repository-name.git
-    ```
-2. **Navigate to the project directory:**
-    ```bash
-    cd your-repository-name
-    ```
-3. **Install dependencies:**
-    ```bash
-    [Provide specific instructions or commands for installing project dependencies, e.g., pip install -r requirements.txt for Python projects, npm install for Node.js projects, etc.]
-    ```
+3. Build the project to resolve dependencies.
 
 ## Usage
+1. Run the `StudentInfoManagerApp` class to start the application.
+2. Use the tabs to navigate through different functionalities:
+    - **Add Student**: Fill in the details and click "Add Student".
+    - **Edit Student**: Provide the Student ID of the record you want to update, fill in the new details, and click "Edit Student".
+    - **Delete Student**: Provide the Student ID and click "Delete Student".
+    - **View Students**: Click "Refresh" to view the list of all students.
 
-To use this project, follow these steps:
+## File Structure
+- `Student.java`: Defines the `Student` class with attributes and methods.
+- `StudentManager.java`: Manages the collection of students and CRUD operations.
+- `FileManager.java`: Handles reading and writing student data to/from text files.
+- `InvalidInputException.java`: Custom exception class for handling invalid inputs.
+- `StudentInfoManagerApp.java`: Main class that initializes the GUI and integrates all functionalities.
 
-1. **Step 1:** [Describe the first step for using your project]
-2. **Step 2:** [Describe the second step for using your project]
-3. **Step 3:** [Describe the third step for using your project]
+## Exception Handling
+The application includes custom exception handling to manage invalid inputs. For instance, attempting to add a student without filling in all fields will trigger an `InvalidInputException` with a relevant error message.
 
-[Include any additional usage instructions, examples, or code snippets that help users understand how to use your project.]
-
-## Configuration
-
-[Provide details on how to configure the project. Mention any environment variables, configuration files, or settings that need to be adjusted.]
-
-## Contributing
-
-We welcome contributions! To contribute to this project, please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch:
-    ```bash
-    git checkout -b feature/your-feature-name
-    ```
-3. Make your changes and commit them:
-    ```bash
-    git commit -m 'Add feature'
-    ```
-4. Push to the branch:
-    ```bash
-    git push origin feature/your-feature-name
-    ```
-5. Open a pull request.
-
-Please ensure your code follows our [coding guidelines](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md).
-
-## License
-
-This project is licensed under the [MIT License](LICENSE). 
-
-## Contact
-
-If you have any questions or feedback, feel free to reach out:
+## Sample Data File
+Ensure you have a `students.txt` file in the root directory with sample data in the following format:
 
 - Email: [your-email@example.com](mailto:your-email@example.com)
 - GitHub Issues: [https://github.com/your-username/your-repository-name/issues](https://github.com/your-username/your-repository-name/issues)
