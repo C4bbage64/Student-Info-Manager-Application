@@ -7,7 +7,7 @@ The Student Info Manager Application is a desktop application built with Java Sw
 - Add new student records
 - Edit existing student records
 - Delete student records
-- View all student records
+- Sort and View all student records
 - Exception handling with custom messages
 - Persistent storage of student data using text files
 
