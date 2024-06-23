@@ -1,4 +1,4 @@
-![UML class diagram SIMA](https://github.com/C4bbage64/Student-Info-Manager-Application/assets/151762860/89169a07-70bd-45ff-b06d-4c64948937c0)# Student Info Manager Application
+# Student Info Manager Application
 
 ## Overview
 The Student Info Manager Application is a desktop application built with Java Swing to manage student information. It supports CRUD (Create, Read, Update, Delete) operations on student records and handles exceptions gracefully. The application reads and writes student data from/to text files.
@@ -12,8 +12,7 @@ The Student Info Manager Application is a desktop application built with Java Sw
 - Persistent storage of student data using text files
 
 ## Class Diagram
-![Class Diagram](![UML class diagram SIMA](https://github.com/C4bbage64/Student-Info-Manager-Application/assets/151762860/71c9b6c5-e481-4601-8625-47e7a965d0e4)
-)
+![Class Diagram](https://github.com/C4bbage64/Student-Info-Manager-Application/assets/151762860/71c9b6c5-e481-4601-8625-47e7a965d0e4)
 
 ## Prerequisites
 - Java Development Kit (JDK) 8 or higher
