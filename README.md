@@ -1,5 +1,3 @@
-![Main Interface](https://github.com/C4bbage64/Student-Info-Manager-Application/assets/151762860/573ded61-a615-4add-b0c3-cb2e3561e2d1)
-
 # Student Info Manager Application
 
 ## Overview
