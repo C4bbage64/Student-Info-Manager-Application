@@ -1,9 +1,9 @@
-// Define a custom exception class named "InvalidInputException" which extends Exception
+// Custom exception class to handle invalid input scenarios
 public class InvalidInputException extends Exception {
 
-    // Constructor method for initializing an InvalidInputException object with a message
+    // Constructor that accepts a String message
     public InvalidInputException(String message) {
-        // Call the superclass constructor with the provided message
+        // Calls the constructor of the parent class (Exception) and passes the message to it
         super(message);
     }
 }

@@ -1,58 +1,61 @@
-// Define a class named "Student"
 public class Student {
+    // Instance variables
+    private String name;     // Stores the name of the student
+    private int age;         // Stores the age of the student
+    private String studentId; // Stores the student ID
+    private String course;   // Stores the course the student is enrolled in
 
-    // Declare private instance variables for storing student information
-    private String name;
-    private int age;
-    private String studentId;
-    private String course;
-
-    // Constructor method for initializing a Student object with provided information
+    // Constructor method for Student
     public Student(String name, int age, String studentId, String course) {
-        // Assign values passed to the constructor to the corresponding instance variables
         this.name = name;
         this.age = age;
         this.studentId = studentId;
         this.course = course;
     }
 
-    // Getter method for retrieving the name of the student
+    // Getter method for getName
     public String getName() {
         return name;
     }
 
-    // Setter method for updating the name of the student
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    // Getter method for retrieving the age of the student
+    // Getter method for getAge
     public int getAge() {
         return age;
     }
 
-    // Setter method for updating the age of the student
-    public void setAge(int age) {
-        this.age = age;
-    }
-
-    // Getter method for retrieving the student ID
+    // Getter method for getStudentId
     public String getStudentId() {
         return studentId;
     }
 
-    // Setter method for updating the student ID
-    public void setStudentId(String studentId) {
-        this.studentId = studentId;
-    }
-
-    // Getter method for retrieving the course of the student
+    // Getter method for getCourse
     public String getCourse() {
         return course;
     }
 
-    // Setter method for updating the course of the student
+    // Setter method for name
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    // Setter method for age
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    // Setter method for studentId
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
+    }
+
+    // Setter method for course
     public void setCourse(String course) {
         this.course = course;
+    }
+
+    // Overridden toString method
+    @Override
+    public String toString() {
+        return String.format("Name: %s\nAge: %d\nStudent ID: %s\nCourse: %s\n", name, age, studentId, course);
     }
 }
