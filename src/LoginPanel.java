@@ -9,7 +9,7 @@ public class LoginPanel extends BasePanel {
     private String storedUsername;
     private String storedPassword;
 
-    private static final String CREDENTIALS_FILE = "C:/Users/faiz/IdeaProjects/StudentInformationApplication/src/credentials.txt";
+    private static final String CREDENTIALS_FILE = "StudentInformationApplication/src/credentials.txt";
 
     // Constructor for LoginPanel
     public LoginPanel() {
@@ -25,7 +25,8 @@ public class LoginPanel extends BasePanel {
             storedPassword = reader.readLine();
         } catch (IOException e) {
             // Show an error dialog if there's an issue reading the file
-            showMessageDialog("Error", "Error reading credentials file");
+            e.printStackTrace();
+            showMessageDialog("Error", "Error reading credentials file: " + e.getMessage() + "\nPath: " + new java.io.File(CREDENTIALS_FILE).getAbsolutePath());
             System.exit(1); // Exit the application
         }
     }
