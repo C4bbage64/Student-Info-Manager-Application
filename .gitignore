@@ -27,3 +27,12 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Dependencies ###
+lib/
+
+### Database ###
+*.db
+
+### Local scripts ###
+run.bat
