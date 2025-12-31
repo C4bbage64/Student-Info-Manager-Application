@@ -11,17 +11,7 @@ public class BasePanel extends JPanel {
 
     // Constructor for BasePanel
     public BasePanel() {
-        initializeUI();
-    }
-
-    // Method to initialize the user interface
-    private void initializeUI() {
-        try {
-            // Set the look and feel of the UI to Nimbus
-            UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // Look and Feel is set globally in StudentInfoApp.main()
     }
 
     /**
