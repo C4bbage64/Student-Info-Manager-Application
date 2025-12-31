@@ -1,6 +1,8 @@
 package view;
 
 import util.SessionManager;
+import state.ApplicationStateContext;
+import state.LoggedInState;
 
 import javax.swing.*;
 import java.awt.*;
@@ -91,6 +93,11 @@ public class LoginPanel extends BasePanel {
             if (storedUsername.equals(username) && storedPassword.equals(password)) {
                 // Use Singleton to track session
                 SessionManager.getInstance().login(username);
+
+                // State Pattern: Transition to LoggedInState
+                ApplicationStateContext stateContext = ApplicationStateContext.getInstance();
+                stateContext.setState(new LoggedInState());
+                stateContext.handleStudentOperation();
 
                 Container parent = getParent();
                 if (parent instanceof JPanel) {

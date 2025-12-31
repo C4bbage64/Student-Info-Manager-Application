@@ -1,6 +1,9 @@
 package view;
 
-import controller.StudentController;
+import facade.StudentManagementFacade;
+import chain.ValidationChainBuilder;
+import chain.ValidationHandler;
+import state.ApplicationStateContext;
 import model.Student;
 import exceptions.*;
 
@@ -13,13 +16,14 @@ import java.util.List;
 /**
  * Main panel containing all student management functionality.
  * Part of MVC architecture - View layer.
+ * Uses Facade pattern to interact with controllers.
  */
 public class MainPanel extends BasePanel {
 
-    private StudentController studentController;
+    private StudentManagementFacade facade;
 
     public MainPanel() {
-        this.studentController = new StudentController();
+        this.facade = StudentManagementFacade.getInstance();
         setupUI();
     }
 
@@ -78,13 +82,30 @@ public class MainPanel extends BasePanel {
 
         addButton.addActionListener(e -> {
             try {
+                // State Pattern: Check if logged in
+                ApplicationStateContext stateContext = ApplicationStateContext.getInstance();
+                if (!stateContext.isLoggedIn()) {
+                    showErrorDialog("Access Denied", "Please login first to perform student operations.");
+                    return;
+                }
+                stateContext.handleStudentOperation();
+
                 String studentId = studentIdField.getText().trim();
                 String name = nameField.getText().trim();
-                int age = Integer.parseInt(ageField.getText().trim());
+                String ageStr = ageField.getText().trim();
                 String course = courseField.getText().trim();
                 String email = emailField.getText().trim();
 
-                studentController.addStudent(studentId, name, age, course, email);
+                // Chain of Responsibility: Validate inputs
+                ValidationHandler validator = ValidationChainBuilder.buildStudentValidationChain();
+                validator.validate("studentId", studentId);
+                validator.validate("name", name);
+                validator.validate("age", ageStr);
+                validator.validate("course", course);
+                validator.validate("email", email);
+
+                int age = Integer.parseInt(ageStr);
+                facade.addStudent(studentId, name, age, course, email);
                 showMessageDialog("Success", "Student added successfully!");
                 
                 // Clear fields
@@ -148,7 +169,7 @@ public class MainPanel extends BasePanel {
         loadButton.addActionListener(e -> {
             try {
                 String studentId = studentIdField.getText().trim();
-                Student student = studentController.getStudent(studentId);
+                Student student = facade.getStudent(studentId);
                 
                 nameField.setText(student.getName());
                 ageField.setText(String.valueOf(student.getAge()));
@@ -169,11 +190,20 @@ public class MainPanel extends BasePanel {
             try {
                 String studentId = studentIdField.getText().trim();
                 String name = nameField.getText().trim();
-                int age = Integer.parseInt(ageField.getText().trim());
+                String ageStr = ageField.getText().trim();
                 String course = courseField.getText().trim();
                 String email = emailField.getText().trim();
 
-                studentController.updateStudent(studentId, name, age, course, email);
+                // Chain of Responsibility: Validate inputs
+                ValidationHandler validator = ValidationChainBuilder.buildStudentValidationChain();
+                validator.validate("studentId", studentId);
+                validator.validate("name", name);
+                validator.validate("age", ageStr);
+                validator.validate("course", course);
+                validator.validate("email", email);
+
+                int age = Integer.parseInt(ageStr);
+                facade.updateStudent(studentId, name, age, course, email);
                 showMessageDialog("Success", "Student updated successfully!");
                 
             } catch (NumberFormatException ex) {
@@ -211,6 +241,10 @@ public class MainPanel extends BasePanel {
             try {
                 String studentId = studentIdField.getText().trim();
                 
+                // Chain of Responsibility: Validate input
+                ValidationHandler validator = ValidationChainBuilder.buildGeneralValidationChain();
+                validator.validate("studentId", studentId);
+                
                 // Confirm deletion
                 int confirm = JOptionPane.showConfirmDialog(
                     this,
@@ -220,7 +254,7 @@ public class MainPanel extends BasePanel {
                 );
                 
                 if (confirm == JOptionPane.YES_OPTION) {
-                    studentController.deleteStudent(studentId);
+                    facade.deleteStudent(studentId);
                     showMessageDialog("Success", "Student deleted successfully!");
                     studentIdField.setText("");
                 }
@@ -280,7 +314,7 @@ public class MainPanel extends BasePanel {
         Runnable loadStudents = () -> {
             try {
                 String selectedCriteria = (String) criteriaComboBox.getSelectedItem();
-                List<Student> students = studentController.getStudentsSorted(selectedCriteria);
+                List<Student> students = facade.getStudentsSorted(selectedCriteria);
                 
                 tableModel.setRowCount(0);
                 for (Student student : students) {
@@ -334,12 +368,11 @@ public class MainPanel extends BasePanel {
             try {
                 String studentId = studentIdField.getText().trim();
                 
-                if (studentId.isEmpty()) {
-                    showWarningDialog("Validation Error", "Student ID cannot be empty");
-                    return;
-                }
+                // Chain of Responsibility: Validate input
+                ValidationHandler validator = ValidationChainBuilder.buildGeneralValidationChain();
+                validator.validate("studentId", studentId);
                 
-                Student student = studentController.searchStudent(studentId);
+                Student student = facade.searchStudent(studentId);
                 
                 if (student != null) {
                     resultArea.setText(student.toString());
@@ -347,6 +380,8 @@ public class MainPanel extends BasePanel {
                     resultArea.setText("Student not found.");
                 }
                 
+            } catch (InvalidInputException ex) {
+                showWarningDialog("Validation Error", ex.getMessage());
             } catch (SQLException ex) {
                 showErrorDialog("Database Error", "Failed to search: " + ex.getMessage());
             }

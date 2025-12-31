@@ -1,6 +1,8 @@
 package view;
 
 import controller.AttendanceController;
+import chain.ValidationChainBuilder;
+import chain.ValidationHandler;
 import model.Attendance;
 import exceptions.*;
 
@@ -67,6 +69,12 @@ public class AttendancePanel extends BasePanel {
                 String studentId = studentIdField.getText().trim();
                 String date = dateField.getText().trim();
                 String status = (String) statusBox.getSelectedItem();
+
+                // Chain of Responsibility: Validate inputs
+                ValidationHandler validator = ValidationChainBuilder.buildAttendanceValidationChain();
+                validator.validate("studentId", studentId);
+                validator.validate("date", date);
+                validator.validate("status", status);
 
                 controller.markAttendance(studentId, date, status);
                 showMessageDialog("Success", "Attendance marked successfully!");

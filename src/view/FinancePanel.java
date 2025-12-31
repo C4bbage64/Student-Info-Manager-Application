@@ -1,6 +1,8 @@
 package view;
 
 import controller.PaymentController;
+import chain.ValidationChainBuilder;
+import chain.ValidationHandler;
 import model.Payment;
 import exceptions.*;
 
@@ -69,10 +71,17 @@ public class FinancePanel extends BasePanel {
         addButton.addActionListener(e -> {
             try {
                 String studentId = studentIdField.getText().trim();
-                double amount = Double.parseDouble(amountField.getText().trim());
+                String amountStr = amountField.getText().trim();
                 String date = dateField.getText().trim();
                 String description = descField.getText().trim();
 
+                // Chain of Responsibility: Validate inputs
+                ValidationHandler validator = ValidationChainBuilder.buildPaymentValidationChain();
+                validator.validate("studentId", studentId);
+                validator.validate("amount", amountStr);
+                validator.validate("date", date);
+
+                double amount = Double.parseDouble(amountStr);
                 controller.addPayment(studentId, amount, date, description);
                 showMessageDialog("Success", "Payment added successfully!");
                 
@@ -191,8 +200,14 @@ public class FinancePanel extends BasePanel {
         checkButton.addActionListener(e -> {
             try {
                 String studentId = studentIdField.getText().trim();
-                double totalFees = Double.parseDouble(totalFeesField.getText().trim());
+                String totalFeesStr = totalFeesField.getText().trim();
 
+                // Chain of Responsibility: Validate inputs
+                ValidationHandler validator = ValidationChainBuilder.buildGeneralValidationChain();
+                validator.validate("studentId", studentId);
+                validator.validate("totalFees", totalFeesStr);
+
+                double totalFees = Double.parseDouble(totalFeesStr);
                 double totalPaid = controller.getTotalPaid(studentId);
                 double balance = controller.getBalance(studentId, totalFees);
 

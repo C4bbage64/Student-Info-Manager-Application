@@ -1,6 +1,7 @@
 import view.LoginPanel;
 import view.MainPanel;
 import dao.DatabaseConnection;
+import state.ApplicationStateContext;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,6 +26,10 @@ public class StudentInfoApp {
                 JOptionPane.ERROR_MESSAGE);
             System.exit(1);
         }
+
+        // State Pattern: Initialize application state context (starts in LoginState)
+        ApplicationStateContext.getInstance();
+        System.out.println("Application state initialized.");
 
         // Run GUI on Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
