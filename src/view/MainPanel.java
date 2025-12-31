@@ -4,6 +4,10 @@ import facade.StudentManagementFacade;
 import chain.ValidationChainBuilder;
 import chain.ValidationHandler;
 import state.ApplicationStateContext;
+import observer.StudentDataObserver;
+import observer.StudentDataManager;
+import strategy.StudentSortContext;
+import strategy.SortStrategy;
 import model.Student;
 import exceptions.*;
 
@@ -17,14 +21,41 @@ import java.util.List;
  * Main panel containing all student management functionality.
  * Part of MVC architecture - View layer.
  * Uses Facade pattern to interact with controllers.
+ * Implements Observer pattern to auto-refresh when data changes.
+ * Uses Strategy pattern for sorting students.
  */
-public class MainPanel extends BasePanel {
+public class MainPanel extends BasePanel implements StudentDataObserver {
 
     private StudentManagementFacade facade;
+    private StudentSortContext sortContext;
+    private DefaultTableModel studentTableModel;
+    private JTable studentTable;
 
     public MainPanel() {
         this.facade = StudentManagementFacade.getInstance();
+        this.sortContext = new StudentSortContext();
         setupUI();
+        
+        // Observer Pattern: Register this panel as an observer
+        StudentDataManager.getInstance().addObserver(this);
+    }
+    
+    /**
+     * Observer Pattern: Called when student data changes.
+     * Auto-refreshes the student table.
+     */
+    @Override
+    public void onStudentDataChanged(String eventType) {
+        // Refresh the student table when data changes
+        if (studentTableModel != null) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    refreshStudentTable();
+                } catch (SQLException e) {
+                    // Silently handle - table will refresh on next manual refresh
+                }
+            });
+        }
     }
 
     private void setupUI() {
@@ -292,13 +323,13 @@ public class MainPanel extends BasePanel {
 
         // Table
         String[] columns = {"Student ID", "Name", "Age", "Course", "Email"};
-        DefaultTableModel tableModel = new DefaultTableModel(columns, 0) {
+        studentTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        JTable studentTable = new JTable(tableModel);
+        studentTable = new JTable(studentTableModel);
         JScrollPane scrollPane = new JScrollPane(studentTable);
 
         // Count label
@@ -314,11 +345,16 @@ public class MainPanel extends BasePanel {
         Runnable loadStudents = () -> {
             try {
                 String selectedCriteria = (String) criteriaComboBox.getSelectedItem();
-                List<Student> students = facade.getStudentsSorted(selectedCriteria);
                 
-                tableModel.setRowCount(0);
+                // Strategy Pattern: Use strategy to sort students
+                List<Student> students = facade.getAllStudents();
+                SortStrategy strategy = StudentSortContext.getStrategyByName(selectedCriteria);
+                sortContext.setStrategy(strategy);
+                students = sortContext.sortStudents(students);
+                
+                studentTableModel.setRowCount(0);
                 for (Student student : students) {
-                    tableModel.addRow(new Object[]{
+                    studentTableModel.addRow(new Object[]{
                         student.getStudentId(),
                         student.getName(),
                         student.getAge(),
@@ -337,6 +373,31 @@ public class MainPanel extends BasePanel {
         refreshButton.addActionListener(e -> loadStudents.run());
 
         return panel;
+    }
+    
+    /**
+     * Helper method to refresh student table.
+     * Used by Observer pattern to auto-refresh when data changes.
+     */
+    private void refreshStudentTable() throws SQLException {
+        if (studentTableModel == null) {
+            return;
+        }
+        
+        // Get all students and sort using current strategy
+        List<Student> students = facade.getAllStudents();
+        students = sortContext.sortStudents(students);
+        
+        studentTableModel.setRowCount(0);
+        for (Student student : students) {
+            studentTableModel.addRow(new Object[]{
+                student.getStudentId(),
+                student.getName(),
+                student.getAge(),
+                student.getCourse(),
+                student.getEmail() != null ? student.getEmail() : ""
+            });
+        }
     }
 
     private JPanel createSearchStudentPane() {
@@ -388,5 +449,30 @@ public class MainPanel extends BasePanel {
         });
 
         return panel;
+    }
+    
+    /**
+     * Helper method to refresh student table.
+     * Used by Observer pattern to auto-refresh when data changes.
+     */
+    private void refreshStudentTable() throws SQLException {
+        if (studentTableModel == null) {
+            return;
+        }
+        
+        // Get all students and sort using current strategy
+        List<Student> students = facade.getAllStudents();
+        students = sortContext.sortStudents(students);
+        
+        studentTableModel.setRowCount(0);
+        for (Student student : students) {
+            studentTableModel.addRow(new Object[]{
+                student.getStudentId(),
+                student.getName(),
+                student.getAge(),
+                student.getCourse(),
+                student.getEmail() != null ? student.getEmail() : ""
+            });
+        }
     }
 }

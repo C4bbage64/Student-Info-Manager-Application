@@ -3,6 +3,7 @@ package facade;
 import controller.StudentController;
 import controller.AttendanceController;
 import controller.PaymentController;
+import observer.StudentDataManager;
 import model.Student;
 import model.Attendance;
 import model.Payment;
@@ -46,10 +47,13 @@ public class StudentManagementFacade {
     
     /**
      * Adds a new student with validation.
+     * Observer Pattern: Notifies observers after successful addition.
      */
     public void addStudent(String studentId, String name, int age, String course, String email) 
             throws InvalidInputException, DuplicateStudentException, SQLException {
         studentController.addStudent(studentId, name, age, course, email);
+        // Observer Pattern: Notify observers of data change
+        StudentDataManager.getInstance().notifyStudentAdded();
     }
     
     /**
@@ -62,18 +66,24 @@ public class StudentManagementFacade {
     
     /**
      * Updates an existing student.
+     * Observer Pattern: Notifies observers after successful update.
      */
     public void updateStudent(String studentId, String name, int age, String course, String email) 
             throws InvalidInputException, StudentNotFoundException, SQLException {
         studentController.updateStudent(studentId, name, age, course, email);
+        // Observer Pattern: Notify observers of data change
+        StudentDataManager.getInstance().notifyStudentUpdated();
     }
     
     /**
      * Deletes a student.
+     * Observer Pattern: Notifies observers after successful deletion.
      */
     public void deleteStudent(String studentId) 
             throws InvalidInputException, StudentNotFoundException, SQLException {
         studentController.deleteStudent(studentId);
+        // Observer Pattern: Notify observers of data change
+        StudentDataManager.getInstance().notifyStudentDeleted();
     }
     
     /**
