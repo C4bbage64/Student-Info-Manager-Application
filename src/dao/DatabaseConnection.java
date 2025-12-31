@@ -80,6 +80,30 @@ public class DatabaseConnection {
             stmt.execute(createStudentsTable);
             stmt.execute(createAttendanceTable);
             stmt.execute(createPaymentsTable);
+            
+            // Migration: Add enrollment_status column if it doesn't exist
+            migrateEnrollmentStatus();
+        }
+    }
+
+    /**
+     * Migrates database schema to add enrollment_status column.
+     * Handles existing databases gracefully.
+     */
+    private void migrateEnrollmentStatus() {
+        try {
+            // Check if column exists by trying to query it
+            try (Statement stmt = connection.createStatement()) {
+                stmt.executeQuery("SELECT enrollment_status FROM students LIMIT 1");
+            }
+        } catch (SQLException e) {
+            // Column doesn't exist, add it
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute("ALTER TABLE students ADD COLUMN enrollment_status TEXT DEFAULT 'ENROLLED'");
+                System.out.println("Database migration: Added enrollment_status column");
+            } catch (SQLException migrationException) {
+                System.err.println("Failed to migrate enrollment_status column: " + migrationException.getMessage());
+            }
         }
     }
 

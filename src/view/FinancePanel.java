@@ -1,6 +1,7 @@
 package view;
 
 import controller.PaymentController;
+import facade.StudentManagementFacade;
 import chain.ValidationChainBuilder;
 import chain.ValidationHandler;
 import model.Payment;
@@ -20,11 +21,13 @@ import java.util.List;
 public class FinancePanel extends BasePanel {
 
     private PaymentController controller;
+    private StudentManagementFacade facade;
     private JTable paymentTable;
     private DefaultTableModel tableModel;
 
     public FinancePanel() {
         this.controller = new PaymentController();
+        this.facade = StudentManagementFacade.getInstance();
         setupUI();
     }
 
@@ -133,15 +136,44 @@ public class FinancePanel extends BasePanel {
         paymentTable = new JTable(tableModel);
         JScrollPane scrollPane = new JScrollPane(paymentTable);
 
-        // Bottom panel for total
+        // Bottom panel for buttons and total
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        
+        // Left side - Edit/Delete buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton editButton = new JButton("Edit");
+        JButton deleteButton = new JButton("Delete");
+        editButton.setEnabled(false);
+        deleteButton.setEnabled(false);
+        setComponentStyles(editButton, deleteButton);
+        buttonPanel.add(editButton);
+        buttonPanel.add(deleteButton);
+
+        // Right side - Total label (declared first so it can be used in action listeners)
         JPanel totalPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JLabel totalLabel = new JLabel("Total: $0.00");
         totalLabel.setFont(new Font("Arial", Font.BOLD, 16));
         totalPanel.add(totalLabel);
 
+        // Enable buttons when row is selected
+        paymentTable.getSelectionModel().addListSelectionListener(e -> {
+            boolean hasSelection = paymentTable.getSelectedRow() >= 0;
+            editButton.setEnabled(hasSelection);
+            deleteButton.setEnabled(hasSelection);
+        });
+
+        // Edit button action
+        editButton.addActionListener(e -> editPayment(totalLabel));
+
+        // Delete button action
+        deleteButton.addActionListener(e -> deletePayment(totalLabel));
+
+        bottomPanel.add(buttonPanel, BorderLayout.WEST);
+        bottomPanel.add(totalPanel, BorderLayout.EAST);
+
         panel.add(searchPanel, BorderLayout.NORTH);
         panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(totalPanel, BorderLayout.SOUTH);
+        panel.add(bottomPanel, BorderLayout.SOUTH);
 
         // Action listeners
         searchButton.addActionListener(e -> {
@@ -277,6 +309,121 @@ public class FinancePanel extends BasePanel {
                 payment.getDate(),
                 payment.getDescription()
             });
+        }
+    }
+
+    private void editPayment(JLabel totalLabel) {
+        int selectedRow = paymentTable.getSelectedRow();
+        if (selectedRow < 0) {
+            return;
+        }
+
+        int id = (Integer) tableModel.getValueAt(selectedRow, 0);
+        String amountStr = ((String) tableModel.getValueAt(selectedRow, 2)).replace("$", "");
+        String currentDescription = (String) tableModel.getValueAt(selectedRow, 4);
+
+        // Create dialog for editing
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Edit Payment", true);
+        dialog.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        dialog.add(new JLabel("Amount ($):"), gbc);
+        gbc.gridx = 1;
+        JTextField amountField = new JTextField(amountStr, 15);
+        dialog.add(amountField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1;
+        dialog.add(new JLabel("Description:"), gbc);
+        gbc.gridx = 1;
+        JTextField descField = new JTextField(currentDescription, 15);
+        dialog.add(descField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        JButton saveButton = new JButton("Save");
+        JButton cancelButton = new JButton("Cancel");
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+        dialog.add(buttonPanel, gbc);
+
+        saveButton.addActionListener(e -> {
+            try {
+                String amountStrNew = amountField.getText().trim();
+                String description = descField.getText().trim();
+                
+                // Chain of Responsibility: Validate input
+                ValidationHandler validator = ValidationChainBuilder.buildPaymentValidationChain();
+                validator.validate("amount", amountStrNew);
+
+                double amount = Double.parseDouble(amountStrNew);
+                facade.updatePayment(id, amount, description);
+                showMessageDialog("Success", "Payment updated successfully!");
+                dialog.dispose();
+                
+                // Refresh table
+                String studentId = (String) tableModel.getValueAt(selectedRow, 1);
+                if (studentId != null && !studentId.isEmpty()) {
+                    loadStudentPayments(studentId, totalLabel);
+                } else {
+                    loadAllPayments(totalLabel);
+                }
+            } catch (NumberFormatException ex) {
+                showWarningDialog("Validation Error", "Invalid amount format!");
+            } catch (InvalidInputException ex) {
+                showWarningDialog("Validation Error", ex.getMessage());
+            } catch (SQLException ex) {
+                showErrorDialog("Database Error", "Failed to update payment: " + ex.getMessage());
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void deletePayment(JLabel totalLabel) {
+        int selectedRow = paymentTable.getSelectedRow();
+        if (selectedRow < 0) {
+            return;
+        }
+
+        int id = (Integer) tableModel.getValueAt(selectedRow, 0);
+        String studentId = (String) tableModel.getValueAt(selectedRow, 1);
+        String amount = (String) tableModel.getValueAt(selectedRow, 2);
+        String date = (String) tableModel.getValueAt(selectedRow, 3);
+        String description = (String) tableModel.getValueAt(selectedRow, 4);
+
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Are you sure you want to delete this payment record?\n" +
+            "Student ID: " + studentId + "\n" +
+            "Amount: " + amount + "\n" +
+            "Date: " + date + "\n" +
+            "Description: " + description,
+            "Confirm Delete",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                facade.deletePayment(id);
+                showMessageDialog("Success", "Payment record deleted successfully!");
+                
+                // Refresh table
+                if (studentId != null && !studentId.isEmpty()) {
+                    loadStudentPayments(studentId, totalLabel);
+                } else {
+                    loadAllPayments(totalLabel);
+                }
+            } catch (SQLException ex) {
+                showErrorDialog("Database Error", "Failed to delete payment: " + ex.getMessage());
+            }
         }
     }
 }

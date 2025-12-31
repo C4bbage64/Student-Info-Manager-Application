@@ -65,6 +65,7 @@ public class MainPanel extends BasePanel implements StudentDataObserver {
         JTabbedPane tabbedPane = new JTabbedPane();
         
         // Student Management tabs
+        tabbedPane.addTab("Dashboard", new StudentDashboardPanel());
         tabbedPane.addTab("Add Student", createAddStudentPane());
         tabbedPane.addTab("Edit Student", createEditStudentPane());
         tabbedPane.addTab("Delete Student", createDeleteStudentPane());
@@ -322,7 +323,7 @@ public class MainPanel extends BasePanel implements StudentDataObserver {
         sortPanel.add(refreshButton);
 
         // Table
-        String[] columns = {"Student ID", "Name", "Age", "Course", "Email"};
+        String[] columns = {"Student ID", "Name", "Age", "Course", "Email", "Status"};
         studentTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -330,6 +331,40 @@ public class MainPanel extends BasePanel implements StudentDataObserver {
             }
         };
         studentTable = new JTable(studentTableModel);
+        
+        // Color-code rows based on enrollment status
+        studentTable.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                if (!isSelected) {
+                    // Get status from the last column (index 5)
+                    String status = (String) table.getValueAt(row, 5);
+                    if (status != null) {
+                        switch (status) {
+                            case "ENROLLED":
+                                c.setBackground(new Color(220, 255, 220)); // Light green
+                                break;
+                            case "SUSPENDED":
+                                c.setBackground(new Color(255, 255, 200)); // Light yellow
+                                break;
+                            case "GRADUATED":
+                                c.setBackground(new Color(240, 240, 240)); // Light gray
+                                break;
+                            default:
+                                c.setBackground(Color.WHITE);
+                        }
+                    } else {
+                        c.setBackground(Color.WHITE);
+                    }
+                }
+                
+                return c;
+            }
+        });
+        
         JScrollPane scrollPane = new JScrollPane(studentTable);
 
         // Count label
@@ -359,7 +394,8 @@ public class MainPanel extends BasePanel implements StudentDataObserver {
                         student.getName(),
                         student.getAge(),
                         student.getCourse(),
-                        student.getEmail() != null ? student.getEmail() : ""
+                        student.getEmail() != null ? student.getEmail() : "",
+                        student.getEnrollmentStatus()
                     });
                 }
                 countLabel.setText("Total Students: " + students.size());
@@ -374,31 +410,6 @@ public class MainPanel extends BasePanel implements StudentDataObserver {
 
         return panel;
     }
-    
-    /**
-     * Helper method to refresh student table.
-     * Used by Observer pattern to auto-refresh when data changes.
-     */
-    private void refreshStudentTable() throws SQLException {
-        if (studentTableModel == null) {
-            return;
-        }
-        
-        // Get all students and sort using current strategy
-        List<Student> students = facade.getAllStudents();
-        students = sortContext.sortStudents(students);
-        
-        studentTableModel.setRowCount(0);
-        for (Student student : students) {
-            studentTableModel.addRow(new Object[]{
-                student.getStudentId(),
-                student.getName(),
-                student.getAge(),
-                student.getCourse(),
-                student.getEmail() != null ? student.getEmail() : ""
-            });
-        }
-    }
 
     private JPanel createSearchStudentPane() {
         JPanel panel = new JPanel(new GridBagLayout());
@@ -407,46 +418,92 @@ public class MainPanel extends BasePanel implements StudentDataObserver {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        JLabel studentIdLabel = new JLabel("Student ID:");
-        JTextField studentIdField = new JTextField(20);
+        // Search type selection
+        JLabel searchTypeLabel = new JLabel("Search by:");
+        ButtonGroup searchTypeGroup = new ButtonGroup();
+        JRadioButton searchByIdRadio = new JRadioButton("Student ID", true);
+        JRadioButton searchByNameRadio = new JRadioButton("Name");
+        searchTypeGroup.add(searchByIdRadio);
+        searchTypeGroup.add(searchByNameRadio);
+        
+        JPanel searchTypePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        searchTypePanel.add(searchTypeLabel);
+        searchTypePanel.add(searchByIdRadio);
+        searchTypePanel.add(searchByNameRadio);
+
+        JLabel searchLabel = new JLabel("Search term:");
+        JTextField searchField = new JTextField(20);
         JButton searchButton = new JButton("Search");
         JTextArea resultArea = new JTextArea(10, 30);
         resultArea.setEditable(false);
         resultArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
 
-        setComponentStyles(searchButton, studentIdLabel);
+        setComponentStyles(searchButton, searchLabel);
 
-        gbc.gridx = 0; gbc.gridy = 0; panel.add(studentIdLabel, gbc);
-        gbc.gridx = 1; panel.add(studentIdField, gbc);
-        gbc.gridx = 1; gbc.gridy = 1; panel.add(searchButton, gbc);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        panel.add(searchTypePanel, gbc);
         
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        gbc.gridwidth = 1;
+        gbc.gridx = 0; gbc.gridy = 1; panel.add(searchLabel, gbc);
+        gbc.gridx = 1; panel.add(searchField, gbc);
+        gbc.gridx = 1; gbc.gridy = 2; panel.add(searchButton, gbc);
+        
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weightx = 1.0; gbc.weighty = 1.0;
         panel.add(new JScrollPane(resultArea), gbc);
 
         searchButton.addActionListener(e -> {
+            String searchTerm = searchField.getText().trim();
+            
+            if (searchTerm.isEmpty()) {
+                showWarningDialog("Validation Error", "Please enter a search term");
+                return;
+            }
+            
             try {
-                String studentId = studentIdField.getText().trim();
-                
                 // Chain of Responsibility: Validate input
                 ValidationHandler validator = ValidationChainBuilder.buildGeneralValidationChain();
-                validator.validate("studentId", studentId);
+                validator.validate("studentId", searchTerm);
                 
-                Student student = facade.searchStudent(studentId);
-                
-                if (student != null) {
-                    resultArea.setText(student.toString());
+                if (searchByIdRadio.isSelected()) {
+                    // Search by Student ID
+                    try {
+                        Student student = facade.searchStudent(searchTerm);
+                        if (student != null) {
+                            resultArea.setText(student.toString());
+                        } else {
+                            resultArea.setText("Student not found: " + searchTerm);
+                        }
+                    } catch (SQLException ex) {
+                        showErrorDialog("Database Error", "Failed to search student: " + ex.getMessage());
+                    }
                 } else {
-                    resultArea.setText("Student not found.");
+                    // Search by Name
+                    try {
+                        List<Student> students = facade.searchStudentsByName(searchTerm);
+                        if (students.isEmpty()) {
+                            resultArea.setText("No students found with name containing: " + searchTerm);
+                        } else {
+                            StringBuilder sb = new StringBuilder();
+                            sb.append("Found ").append(students.size()).append(" student(s):\n\n");
+                            for (Student student : students) {
+                                sb.append(student.toString()).append("\n---\n");
+                            }
+                            resultArea.setText(sb.toString());
+                        }
+                    } catch (SQLException ex) {
+                        showErrorDialog("Database Error", "Failed to search students: " + ex.getMessage());
+                    }
                 }
                 
             } catch (InvalidInputException ex) {
                 showWarningDialog("Validation Error", ex.getMessage());
-            } catch (SQLException ex) {
-                showErrorDialog("Database Error", "Failed to search: " + ex.getMessage());
             }
         });
+        
+        // Enter key support
+        searchField.addActionListener(e -> searchButton.doClick());
 
         return panel;
     }
@@ -471,7 +528,8 @@ public class MainPanel extends BasePanel implements StudentDataObserver {
                 student.getName(),
                 student.getAge(),
                 student.getCourse(),
-                student.getEmail() != null ? student.getEmail() : ""
+                student.getEmail() != null ? student.getEmail() : "",
+                student.getEnrollmentStatus()
             });
         }
     }

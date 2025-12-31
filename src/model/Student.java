@@ -10,6 +10,7 @@ public class Student {
     private int age;
     private String course;
     private String email;
+    private String enrollmentStatus; // ENROLLED, SUSPENDED, GRADUATED
 
     // Default constructor
     public Student() {
@@ -30,6 +31,17 @@ public class Student {
         this.studentId = studentId;
         this.course = course;
         this.email = email;
+        this.enrollmentStatus = "ENROLLED"; // Default status
+    }
+    
+    // Constructor with all fields including enrollment status
+    public Student(String name, int age, String studentId, String course, String email, String enrollmentStatus) {
+        this.name = name;
+        this.age = age;
+        this.studentId = studentId;
+        this.course = course;
+        this.email = email;
+        this.enrollmentStatus = enrollmentStatus != null ? enrollmentStatus : "ENROLLED";
     }
 
     // Getters
@@ -53,6 +65,10 @@ public class Student {
         return email;
     }
 
+    public String getEnrollmentStatus() {
+        return enrollmentStatus != null ? enrollmentStatus : "ENROLLED";
+    }
+
     // Setters
     public void setStudentId(String studentId) {
         this.studentId = studentId;
@@ -74,9 +90,13 @@ public class Student {
         this.email = email;
     }
 
+    public void setEnrollmentStatus(String enrollmentStatus) {
+        this.enrollmentStatus = enrollmentStatus != null ? enrollmentStatus : "ENROLLED";
+    }
+
     @Override
     public String toString() {
-        return String.format("Student ID: %s\nName: %s\nAge: %d\nCourse: %s\nEmail: %s\n",
-                studentId, name, age, course, email != null ? email : "N/A");
+        return String.format("Student ID: %s\nName: %s\nAge: %d\nCourse: %s\nEmail: %s\nStatus: %s\n",
+                studentId, name, age, course, email != null ? email : "N/A", getEnrollmentStatus());
     }
 }

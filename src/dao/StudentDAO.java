@@ -23,13 +23,14 @@ public class StudentDAO {
             throw new DuplicateStudentException(student.getStudentId());
         }
 
-        String sql = "INSERT INTO students (student_id, name, age, course, email) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO students (student_id, name, age, course, email, enrollment_status) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = DatabaseConnection.getInstance().getConnection().prepareStatement(sql)) {
             stmt.setString(1, student.getStudentId());
             stmt.setString(2, student.getName());
             stmt.setInt(3, student.getAge());
             stmt.setString(4, student.getCourse());
             stmt.setString(5, student.getEmail());
+            stmt.setString(6, student.getEnrollmentStatus());
             stmt.executeUpdate();
         }
     }
@@ -54,13 +55,14 @@ public class StudentDAO {
             throw new StudentNotFoundException(student.getStudentId(), "cannot update");
         }
 
-        String sql = "UPDATE students SET name = ?, age = ?, course = ?, email = ? WHERE student_id = ?";
+        String sql = "UPDATE students SET name = ?, age = ?, course = ?, email = ?, enrollment_status = ? WHERE student_id = ?";
         try (PreparedStatement stmt = DatabaseConnection.getInstance().getConnection().prepareStatement(sql)) {
             stmt.setString(1, student.getName());
             stmt.setInt(2, student.getAge());
             stmt.setString(3, student.getCourse());
             stmt.setString(4, student.getEmail());
-            stmt.setString(5, student.getStudentId());
+            stmt.setString(5, student.getEnrollmentStatus());
+            stmt.setString(6, student.getStudentId());
             stmt.executeUpdate();
         }
     }
@@ -166,15 +168,41 @@ public class StudentDAO {
     }
 
     /**
+     * Updates enrollment status for a student.
+     */
+    public void updateEnrollmentStatus(String studentId, String status) throws SQLException, StudentNotFoundException {
+        // Check if student exists
+        if (findById(studentId) == null) {
+            throw new StudentNotFoundException(studentId, "cannot update enrollment status");
+        }
+
+        String sql = "UPDATE students SET enrollment_status = ? WHERE student_id = ?";
+        try (PreparedStatement stmt = DatabaseConnection.getInstance().getConnection().prepareStatement(sql)) {
+            stmt.setString(1, status);
+            stmt.setString(2, studentId);
+            stmt.executeUpdate();
+        }
+    }
+
+    /**
      * Helper method to map ResultSet to Student object.
      */
     private Student mapResultSetToStudent(ResultSet rs) throws SQLException {
+        String enrollmentStatus = null;
+        try {
+            enrollmentStatus = rs.getString("enrollment_status");
+        } catch (SQLException e) {
+            // Column might not exist in older databases, default to ENROLLED
+            enrollmentStatus = "ENROLLED";
+        }
+        
         return new Student(
             rs.getString("name"),
             rs.getInt("age"),
             rs.getString("student_id"),
             rs.getString("course"),
-            rs.getString("email")
+            rs.getString("email"),
+            enrollmentStatus
         );
     }
 }

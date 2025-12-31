@@ -1,6 +1,7 @@
 package view;
 
 import controller.AttendanceController;
+import facade.StudentManagementFacade;
 import chain.ValidationChainBuilder;
 import chain.ValidationHandler;
 import model.Attendance;
@@ -20,11 +21,13 @@ import java.util.List;
 public class AttendancePanel extends BasePanel {
 
     private AttendanceController controller;
+    private StudentManagementFacade facade;
     private JTable attendanceTable;
     private DefaultTableModel tableModel;
 
     public AttendancePanel() {
         this.controller = new AttendanceController();
+        this.facade = StudentManagementFacade.getInstance();
         setupUI();
     }
 
@@ -121,8 +124,32 @@ public class AttendancePanel extends BasePanel {
         attendanceTable = new JTable(tableModel);
         JScrollPane scrollPane = new JScrollPane(attendanceTable);
 
+        // Bottom panel for Edit/Delete buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton editButton = new JButton("Edit");
+        JButton deleteButton = new JButton("Delete");
+        editButton.setEnabled(false);
+        deleteButton.setEnabled(false);
+        setComponentStyles(editButton, deleteButton);
+        buttonPanel.add(editButton);
+        buttonPanel.add(deleteButton);
+
+        // Enable buttons when row is selected
+        attendanceTable.getSelectionModel().addListSelectionListener(e -> {
+            boolean hasSelection = attendanceTable.getSelectedRow() >= 0;
+            editButton.setEnabled(hasSelection);
+            deleteButton.setEnabled(hasSelection);
+        });
+
+        // Edit button action
+        editButton.addActionListener(e -> editAttendance());
+
+        // Delete button action
+        deleteButton.addActionListener(e -> deleteAttendance());
+
         panel.add(searchPanel, BorderLayout.NORTH);
         panel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
 
         // Action listeners
         searchButton.addActionListener(e -> {
@@ -218,6 +245,109 @@ public class AttendancePanel extends BasePanel {
                 record.getDate(),
                 record.getStatus()
             });
+        }
+    }
+
+    private void editAttendance() {
+        int selectedRow = attendanceTable.getSelectedRow();
+        if (selectedRow < 0) {
+            return;
+        }
+
+        int id = (Integer) tableModel.getValueAt(selectedRow, 0);
+        String currentStatus = (String) tableModel.getValueAt(selectedRow, 3);
+
+        // Create dialog for editing
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Edit Attendance", true);
+        dialog.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        dialog.add(new JLabel("Status:"), gbc);
+        gbc.gridx = 1;
+        JComboBox<String> statusCombo = new JComboBox<>(new String[]{"PRESENT", "ABSENT"});
+        statusCombo.setSelectedItem(currentStatus);
+        dialog.add(statusCombo, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 2;
+        JButton saveButton = new JButton("Save");
+        JButton cancelButton = new JButton("Cancel");
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+        dialog.add(buttonPanel, gbc);
+
+        saveButton.addActionListener(e -> {
+            try {
+                String newStatus = (String) statusCombo.getSelectedItem();
+                
+                // Chain of Responsibility: Validate input
+                ValidationHandler validator = ValidationChainBuilder.buildAttendanceValidationChain();
+                validator.validate("status", newStatus);
+
+                facade.updateAttendance(id, newStatus);
+                showMessageDialog("Success", "Attendance updated successfully!");
+                dialog.dispose();
+                
+                // Refresh table
+                int studentIdCol = 1;
+                String studentId = (String) tableModel.getValueAt(selectedRow, studentIdCol);
+                if (studentId != null && !studentId.isEmpty()) {
+                    loadStudentAttendance(studentId);
+                } else {
+                    loadAllAttendance();
+                }
+            } catch (InvalidInputException ex) {
+                showWarningDialog("Validation Error", ex.getMessage());
+            } catch (SQLException ex) {
+                showErrorDialog("Database Error", "Failed to update attendance: " + ex.getMessage());
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void deleteAttendance() {
+        int selectedRow = attendanceTable.getSelectedRow();
+        if (selectedRow < 0) {
+            return;
+        }
+
+        int id = (Integer) tableModel.getValueAt(selectedRow, 0);
+        String studentId = (String) tableModel.getValueAt(selectedRow, 1);
+        String date = (String) tableModel.getValueAt(selectedRow, 2);
+        String status = (String) tableModel.getValueAt(selectedRow, 3);
+
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Are you sure you want to delete this attendance record?\n" +
+            "Student ID: " + studentId + "\n" +
+            "Date: " + date + "\n" +
+            "Status: " + status,
+            "Confirm Delete",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                facade.deleteAttendance(id);
+                showMessageDialog("Success", "Attendance record deleted successfully!");
+                
+                // Refresh table
+                if (studentId != null && !studentId.isEmpty()) {
+                    loadStudentAttendance(studentId);
+                } else {
+                    loadAllAttendance();
+                }
+            } catch (SQLException ex) {
+                showErrorDialog("Database Error", "Failed to delete attendance: " + ex.getMessage());
+            }
         }
     }
 }

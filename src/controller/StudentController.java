@@ -27,7 +27,7 @@ public class StudentController {
         // Validation
         validateStudentInput(studentId, name, age, course);
 
-        Student student = new Student(name, age, studentId, course, email);
+        Student student = new Student(name, age, studentId, course, email, "ENROLLED");
         studentDAO.create(student);
     }
 
@@ -52,7 +52,10 @@ public class StudentController {
         // Validation
         validateStudentInput(studentId, name, age, course);
 
-        Student student = new Student(name, age, studentId, course, email);
+        // Get existing student to preserve enrollment status
+        Student existingStudent = studentDAO.findById(studentId);
+        String enrollmentStatus = existingStudent != null ? existingStudent.getEnrollmentStatus() : "ENROLLED";
+        Student student = new Student(name, age, studentId, course, email, enrollmentStatus);
         studentDAO.update(student);
     }
 
@@ -101,6 +104,25 @@ public class StudentController {
      */
     public boolean studentExists(String studentId) throws SQLException {
         return studentDAO.exists(studentId);
+    }
+
+    /**
+     * Updates enrollment status for a student.
+     */
+    public void updateEnrollmentStatus(String studentId, String status) 
+            throws InvalidInputException, StudentNotFoundException, SQLException {
+        
+        if (studentId == null || studentId.trim().isEmpty()) {
+            throw new InvalidInputException("Student ID cannot be empty");
+        }
+        if (status == null || status.trim().isEmpty()) {
+            throw new InvalidInputException("Enrollment status cannot be empty");
+        }
+        if (!status.equals("ENROLLED") && !status.equals("SUSPENDED") && !status.equals("GRADUATED")) {
+            throw new InvalidInputException("Enrollment status must be ENROLLED, SUSPENDED, or GRADUATED");
+        }
+        
+        studentDAO.updateEnrollmentStatus(studentId, status);
     }
 
     /**

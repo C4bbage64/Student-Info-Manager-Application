@@ -4,6 +4,10 @@ import controller.StudentController;
 import controller.AttendanceController;
 import controller.PaymentController;
 import observer.StudentDataManager;
+import state.StudentEnrollmentContext;
+import state.EnrolledState;
+import state.SuspendedState;
+import state.GraduatedState;
 import model.Student;
 import model.Attendance;
 import model.Payment;
@@ -121,6 +125,56 @@ public class StudentManagementFacade {
         return studentController.studentExists(studentId);
     }
     
+    /**
+     * Updates enrollment status for a student.
+     * Uses State Pattern to manage enrollment state transitions.
+     * Observer Pattern: Notifies observers after successful update.
+     */
+    public void updateEnrollmentStatus(String studentId, String status) 
+            throws InvalidInputException, StudentNotFoundException, SQLException {
+        
+        // Get current student to determine current state
+        Student student = studentController.getStudent(studentId);
+        StudentEnrollmentContext context = new StudentEnrollmentContext();
+        
+        // Set initial state based on current enrollment status
+        String currentStatus = student.getEnrollmentStatus();
+        if ("SUSPENDED".equals(currentStatus)) {
+            context.setState(new SuspendedState());
+        } else if ("GRADUATED".equals(currentStatus)) {
+            context.setState(new GraduatedState());
+        } else {
+            context.setState(new EnrolledState());
+        }
+        
+        // Perform state transition based on new status
+        switch (status) {
+            case "ENROLLED":
+                if (context.isSuspended()) {
+                    context.activate();
+                } else if (context.isGraduated()) {
+                    context.enroll();
+                }
+                break;
+            case "SUSPENDED":
+                if (context.isEnrolled()) {
+                    context.suspend();
+                }
+                break;
+            case "GRADUATED":
+                if (context.isEnrolled()) {
+                    context.graduate();
+                }
+                break;
+        }
+        
+        // Update database
+        studentController.updateEnrollmentStatus(studentId, status);
+        
+        // Observer Pattern: Notify observers of data change
+        StudentDataManager.getInstance().notifyStudentUpdated();
+    }
+
     // ========== Attendance Operations ==========
     
     /**
