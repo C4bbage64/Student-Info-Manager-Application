@@ -101,31 +101,6 @@ public class StudentDAO {
     }
 
     /**
-     * Retrieves all students sorted by a specified criteria.
-     */
-    public List<Student> readAllSorted(String criteria) throws SQLException {
-        List<Student> students = new ArrayList<>();
-        String column = switch (criteria.toLowerCase()) {
-            case "name" -> "name";
-            case "age" -> "age";
-            case "studentid", "student_id" -> "student_id";
-            case "course" -> "course";
-            default -> "student_id";
-        };
-
-        String sql = "SELECT * FROM students ORDER BY " + column;
-
-        try (Statement stmt = DatabaseConnection.getInstance().getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                students.add(mapResultSetToStudent(rs));
-            }
-        }
-        return students;
-    }
-
-    /**
      * Searches for a student by ID (returns null if not found).
      */
     public Student findById(String studentId) throws SQLException {

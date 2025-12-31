@@ -98,13 +98,6 @@ public class StudentManagementFacade {
     }
     
     /**
-     * Gets all students sorted by criteria.
-     */
-    public List<Student> getStudentsSorted(String criteria) throws SQLException {
-        return studentController.getStudentsSorted(criteria);
-    }
-    
-    /**
      * Searches for a student by ID.
      */
     public Student searchStudent(String studentId) throws SQLException {
