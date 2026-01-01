@@ -32,28 +32,6 @@ public class ApplicationStateContext {
     }
     
     /**
-     * Gets the current state.
-     */
-    public ApplicationState getCurrentState() {
-        return currentState;
-    }
-    
-    /**
-     * Handles login operation through current state.
-     */
-    public void handleLogin() {
-        currentState.handleLogin();
-    }
-    
-    /**
-     * Handles logout operation and transitions to LoginState.
-     */
-    public void handleLogout() {
-        currentState.handleLogout();
-        setState(new LoginState());
-    }
-    
-    /**
      * Handles student operation through current state.
      */
     public void handleStudentOperation() {

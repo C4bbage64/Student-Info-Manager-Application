@@ -1,20 +1,19 @@
 package facade;
 
-import controller.StudentController;
 import controller.AttendanceController;
 import controller.PaymentController;
-import observer.StudentDataManager;
-import state.StudentEnrollmentContext;
-import state.EnrolledState;
-import state.SuspendedState;
-import state.GraduatedState;
-import model.Student;
-import model.Attendance;
-import model.Payment;
+import controller.StudentController;
 import exceptions.*;
-
 import java.sql.SQLException;
 import java.util.List;
+import model.Attendance;
+import model.Payment;
+import model.Student;
+import observer.StudentDataManager;
+import state.EnrolledState;
+import state.GraduatedState;
+import state.StudentEnrollmentContext;
+import state.SuspendedState;
 
 /**
  * Facade pattern implementation.
@@ -109,13 +108,6 @@ public class StudentManagementFacade {
      */
     public List<Student> searchStudentsByName(String name) throws SQLException {
         return studentController.searchStudentsByName(name);
-    }
-    
-    /**
-     * Checks if a student exists.
-     */
-    public boolean studentExists(String studentId) throws SQLException {
-        return studentController.studentExists(studentId);
     }
     
     /**

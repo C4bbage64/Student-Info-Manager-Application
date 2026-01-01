@@ -48,11 +48,4 @@ public class SessionManager {
     public String getCurrentUser() {
         return currentUser;
     }
-
-    /**
-     * Checks if a user is currently logged in.
-     */
-    public boolean isLoggedIn() {
-        return loggedIn;
-    }
 }

@@ -136,13 +136,6 @@ public class StudentDAO {
     }
 
     /**
-     * Checks if a student exists in the database.
-     */
-    public boolean exists(String studentId) throws SQLException {
-        return findById(studentId) != null;
-    }
-
-    /**
      * Updates enrollment status for a student.
      */
     public void updateEnrollmentStatus(String studentId, String status) throws SQLException, StudentNotFoundException {

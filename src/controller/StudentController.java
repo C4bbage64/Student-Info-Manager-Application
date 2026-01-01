@@ -93,13 +93,6 @@ public class StudentController {
     }
 
     /**
-     * Checks if a student exists.
-     */
-    public boolean studentExists(String studentId) throws SQLException {
-        return studentDAO.exists(studentId);
-    }
-
-    /**
      * Updates enrollment status for a student.
      */
     public void updateEnrollmentStatus(String studentId, String status) 

@@ -29,4 +29,3 @@ public class SuspendedState implements StudentEnrollmentState {
         return "SUSPENDED";
     }
 }
-
