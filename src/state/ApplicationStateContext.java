@@ -40,6 +40,9 @@ public class ApplicationStateContext {
     
     /**
      * Checks if the application is in logged in state.
+     * Note: Login is primarily enforced via CardLayout navigation,
+     * but this method provides programmatic access to login state.
+     * @return true if in LoggedInState, false otherwise
      */
     public boolean isLoggedIn() {
         return currentState instanceof LoggedInState;

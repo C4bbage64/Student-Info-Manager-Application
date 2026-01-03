@@ -7,11 +7,9 @@ package util;
 public class SessionManager {
     private static SessionManager instance;
     private String currentUser;
-    private boolean loggedIn;
 
     // Private constructor - prevents external instantiation (Singleton pattern)
     private SessionManager() {
-        this.loggedIn = false;
         this.currentUser = null;
     }
 
@@ -31,7 +29,6 @@ public class SessionManager {
      */
     public void login(String username) {
         this.currentUser = username;
-        this.loggedIn = true;
     }
 
     /**
@@ -39,13 +36,21 @@ public class SessionManager {
      */
     public void logout() {
         this.currentUser = null;
-        this.loggedIn = false;
     }
 
     /**
      * Gets the current logged-in username.
+     * @return Username if logged in, null otherwise
      */
     public String getCurrentUser() {
         return currentUser;
+    }
+    
+    /**
+     * Checks if a user is currently logged in.
+     * @return true if logged in, false otherwise
+     */
+    public boolean isLoggedIn() {
+        return currentUser != null;
     }
 }
