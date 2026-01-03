@@ -153,6 +153,30 @@ public class StudentDAO {
     }
 
     /**
+     * Gets the highest numeric portion of auto-generated student IDs.
+     * Only considers IDs matching the pattern STU### (e.g., STU001, STU002).
+     * Legacy manually-entered IDs are ignored.
+     * 
+     * @return Maximum ID number found, or 0 if no matching IDs exist
+     * @throws SQLException if database query fails
+     */
+    public int getMaxStudentIdNumber() throws SQLException {
+        String sql = "SELECT MAX(CAST(SUBSTR(student_id, 4) AS INTEGER)) " +
+                     "FROM students WHERE student_id LIKE 'STU%'";
+        
+        try (Statement stmt = DatabaseConnection.getInstance().getConnection().createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            if (rs.next()) {
+                int maxNumber = rs.getInt(1);
+                // If no matching IDs found, rs.getInt(1) returns 0
+                return rs.wasNull() ? 0 : maxNumber;
+            }
+        }
+        return 0;
+    }
+
+    /**
      * Helper method to map ResultSet to Student object.
      */
     private Student mapResultSetToStudent(ResultSet rs) throws SQLException {
