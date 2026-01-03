@@ -1,120 +1,107 @@
 package view;
 
-import controller.AttendanceController;
 import facade.StudentManagementFacade;
+import observer.StudentDataObserver;
+import observer.StudentDataManager;
 import chain.ValidationChainBuilder;
 import chain.ValidationHandler;
 import model.Attendance;
+import model.Student;
 import exceptions.*;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.sql.SQLException;
-import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Panel for managing student attendance.
+ * Unified Attendance Panel consolidating Mark, View, and Rate operations.
  * Part of MVC architecture - View layer.
+ * Uses Facade pattern to interact with controllers.
+ * Implements Observer pattern to auto-refresh when attendance data changes.
  */
-public class AttendancePanel extends BasePanel {
+public class AttendancePanel extends BasePanel implements StudentDataObserver {
 
-    private AttendanceController controller;
     private StudentManagementFacade facade;
-    private JTable attendanceTable;
     private DefaultTableModel tableModel;
+    private JTable attendanceTable;
+
+    // Cache for student names: StudentID -> Name
+    private Map<String, String> studentNameMap;
+    // Store all records for filtering
+    private List<Attendance> allRecords;
+
+    // Toolbar buttons
+    private JButton markButton;
+    private JButton editButton;
+    private JButton deleteButton;
+    private JButton refreshButton;
+    private JButton clearButton;
+
+    // Search/filter
+    private JTextField searchField;
+    private JTextField dateFilterField;
+    private JLabel statsLabel;
 
     public AttendancePanel() {
-        this.controller = new AttendanceController();
         this.facade = StudentManagementFacade.getInstance();
+        this.studentNameMap = new HashMap<>();
         setupUI();
+
+        // Observer Pattern: Register this panel as an observer
+        StudentDataManager.getInstance().addObserver(this);
+    }
+
+    /**
+     * Observer Pattern: Called when data changes.
+     */
+    @Override
+    public void onStudentDataChanged(String eventType) {
+        // Refresh on any relevant change
+        if ("ATTENDANCE".equals(eventType) || "STUDENT_UPDATE".equals(eventType)) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    refreshData();
+                } catch (SQLException e) {
+                    // Silently handle
+                }
+            });
+        }
     }
 
     private void setupUI() {
         setLayout(new BorderLayout());
+        setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("Mark Attendance", createMarkAttendancePane());
-        tabbedPane.addTab("View Attendance", createViewAttendancePane());
-        tabbedPane.addTab("Attendance Rate", createAttendanceRatePane());
+        // Top panel - Search and Filter
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(new JLabel("Search:"));
+        searchField = new JTextField(15);
+        searchField.setToolTipText("Search by Student ID, Name, or Status");
+        topPanel.add(searchField);
 
-        add(tabbedPane, BorderLayout.CENTER);
-    }
+        clearButton = new JButton("Clear");
+        setComponentStyles(clearButton);
+        topPanel.add(clearButton);
 
-    private JPanel createMarkAttendancePane() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        topPanel.add(new JLabel("Filter Date:"));
+        dateFilterField = new JTextField(10);
+        dateFilterField.setToolTipText("YYYY-MM-DD");
+        topPanel.add(dateFilterField);
 
-        JLabel studentIdLabel = new JLabel("Student ID:");
-        JTextField studentIdField = new JTextField(20);
-        JLabel dateLabel = new JLabel("Date:");
-        JTextField dateField = new JTextField(LocalDate.now().toString(), 20);
-        JLabel statusLabel = new JLabel("Status:");
-        JComboBox<String> statusBox = new JComboBox<>(new String[]{"PRESENT", "ABSENT"});
-        JButton markButton = new JButton("Mark Attendance");
-
-        setComponentStyles(markButton, studentIdLabel, dateLabel, statusLabel);
-
-        gbc.gridx = 0; gbc.gridy = 0; panel.add(studentIdLabel, gbc);
-        gbc.gridx = 1; panel.add(studentIdField, gbc);
-        gbc.gridx = 0; gbc.gridy = 1; panel.add(dateLabel, gbc);
-        gbc.gridx = 1; panel.add(dateField, gbc);
-        gbc.gridx = 0; gbc.gridy = 2; panel.add(statusLabel, gbc);
-        gbc.gridx = 1; panel.add(statusBox, gbc);
-        gbc.gridx = 1; gbc.gridy = 3; panel.add(markButton, gbc);
-
-        markButton.addActionListener(e -> {
-            try {
-                String studentId = studentIdField.getText().trim();
-                String date = dateField.getText().trim();
-                String status = (String) statusBox.getSelectedItem();
-
-                // Chain of Responsibility: Validate inputs
-                ValidationHandler validator = ValidationChainBuilder.buildAttendanceValidationChain();
-                validator.validate("studentId", studentId);
-                validator.validate("date", date);
-                validator.validate("status", status);
-
-                controller.markAttendance(studentId, date, status);
-                showMessageDialog("Success", "Attendance marked successfully!");
-                studentIdField.setText("");
-                
-            } catch (InvalidInputException ex) {
-                showWarningDialog("Validation Error", ex.getMessage());
-            } catch (StudentNotFoundException ex) {
-                showErrorDialog("Error", ex.getMessage());
-            } catch (SQLException ex) {
-                showErrorDialog("Database Error", "Failed to mark attendance: " + ex.getMessage());
-            }
-        });
-
-        return panel;
-    }
-
-    private JPanel createViewAttendancePane() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        // Top panel for search
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JLabel studentIdLabel = new JLabel("Student ID (leave empty for all):");
-        JTextField studentIdField = new JTextField(15);
-        JButton searchButton = new JButton("Search");
-        JButton refreshButton = new JButton("Refresh All");
-
-        setComponentStyles(searchButton, refreshButton, studentIdLabel);
-
-        searchPanel.add(studentIdLabel);
-        searchPanel.add(studentIdField);
-        searchPanel.add(searchButton);
-        searchPanel.add(refreshButton);
+        refreshButton = new JButton("Refresh");
+        setComponentStyles(refreshButton);
+        topPanel.add(refreshButton);
 
         // Table
-        String[] columns = {"ID", "Student ID", "Date", "Status"};
+        String[] columns = { "ID", "Student ID", "Student Name", "Date", "Status" };
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -122,232 +109,258 @@ public class AttendancePanel extends BasePanel {
             }
         };
         attendanceTable = new JTable(tableModel);
-        JScrollPane scrollPane = new JScrollPane(attendanceTable);
+        attendanceTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        attendanceTable.setRowHeight(25);
 
-        // Bottom panel for Edit/Delete buttons
+        // Color coding for Status
+        attendanceTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+                if (!isSelected) {
+                    String status = (String) table.getValueAt(row, 4); // Status column
+                    if ("PRESENT".equalsIgnoreCase(status)) {
+                        c.setBackground(new Color(220, 255, 220)); // Light green
+                    } else if ("ABSENT".equalsIgnoreCase(status)) {
+                        c.setBackground(new Color(255, 220, 220)); // Light red
+                    } else {
+                        c.setBackground(Color.WHITE);
+                    }
+                }
+                return c;
+            }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(attendanceTable);
+        scrollPane.setPreferredSize(new Dimension(800, 400));
+
+        // Bottom panel - Actions and Stats
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton editButton = new JButton("Edit");
-        JButton deleteButton = new JButton("Delete");
-        editButton.setEnabled(false);
-        deleteButton.setEnabled(false);
-        setComponentStyles(editButton, deleteButton);
+        markButton = new JButton("Mark Attendance");
+        editButton = new JButton("Edit Selected");
+        deleteButton = new JButton("Delete Selected");
+
+        setComponentStyles(markButton, editButton, deleteButton);
+
+        buttonPanel.add(markButton);
         buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
 
-        // Enable buttons when row is selected
-        attendanceTable.getSelectionModel().addListSelectionListener(e -> {
-            boolean hasSelection = attendanceTable.getSelectedRow() >= 0;
-            editButton.setEnabled(hasSelection);
-            deleteButton.setEnabled(hasSelection);
-        });
+        statsLabel = new JLabel("Today: 0 Present, 0 Absent");
+        statsLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        JPanel statsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        statsPanel.add(statsLabel);
 
-        // Edit button action
-        editButton.addActionListener(e -> editAttendance());
+        bottomPanel.add(buttonPanel, BorderLayout.WEST);
+        bottomPanel.add(statsPanel, BorderLayout.EAST);
 
-        // Delete button action
-        deleteButton.addActionListener(e -> deleteAttendance());
+        add(topPanel, BorderLayout.NORTH);
+        add(scrollPane, BorderLayout.CENTER);
+        add(bottomPanel, BorderLayout.SOUTH);
 
-        panel.add(searchPanel, BorderLayout.NORTH);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
+        // Action Listeners
+        markButton.addActionListener(e -> handleMarkAttendance());
+        editButton.addActionListener(e -> handleEdit());
+        deleteButton.addActionListener(e -> handleDelete());
 
-        // Action listeners
-        searchButton.addActionListener(e -> {
-            String studentId = studentIdField.getText().trim();
-            if (studentId.isEmpty()) {
-                loadAllAttendance();
-            } else {
-                loadStudentAttendance(studentId);
-            }
-        });
-
-        refreshButton.addActionListener(e -> loadAllAttendance());
-
-        return panel;
-    }
-
-    private JPanel createAttendanceRatePane() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        JLabel studentIdLabel = new JLabel("Student ID:");
-        JTextField studentIdField = new JTextField(20);
-        JButton calculateButton = new JButton("Calculate Rate");
-        JLabel resultLabel = new JLabel("Attendance Rate: ");
-        JLabel rateLabel = new JLabel("-");
-        rateLabel.setFont(new Font("Arial", Font.BOLD, 18));
-
-        setComponentStyles(calculateButton, studentIdLabel, resultLabel);
-
-        gbc.gridx = 0; gbc.gridy = 0; panel.add(studentIdLabel, gbc);
-        gbc.gridx = 1; panel.add(studentIdField, gbc);
-        gbc.gridx = 1; gbc.gridy = 1; panel.add(calculateButton, gbc);
-        gbc.gridx = 0; gbc.gridy = 2; panel.add(resultLabel, gbc);
-        gbc.gridx = 1; panel.add(rateLabel, gbc);
-
-        calculateButton.addActionListener(e -> {
+        refreshButton.addActionListener(e -> {
             try {
-                String studentId = studentIdField.getText().trim();
-                double rate = controller.getAttendanceRate(studentId);
-                rateLabel.setText(String.format("%.2f%%", rate));
-                
-                // Color code the result
-                if (rate >= 80) {
-                    rateLabel.setForeground(new Color(0, 128, 0)); // Green
-                } else if (rate >= 60) {
-                    rateLabel.setForeground(new Color(255, 165, 0)); // Orange
-                } else {
-                    rateLabel.setForeground(Color.RED);
-                }
-                
-            } catch (InvalidInputException ex) {
-                showWarningDialog("Validation Error", ex.getMessage());
+                refreshData();
             } catch (SQLException ex) {
-                showErrorDialog("Database Error", "Failed to calculate rate: " + ex.getMessage());
+                showErrorDialog("Database Error", "Failed to refresh: " + ex.getMessage());
             }
         });
 
-        return panel;
-    }
-
-    private void loadAllAttendance() {
-        try {
-            List<Attendance> records = controller.getAllAttendance();
-            updateTable(records);
-        } catch (SQLException ex) {
-            showErrorDialog("Database Error", "Failed to load attendance: " + ex.getMessage());
-        }
-    }
-
-    private void loadStudentAttendance(String studentId) {
-        try {
-            List<Attendance> records = controller.getStudentAttendance(studentId);
-            updateTable(records);
-        } catch (InvalidInputException ex) {
-            showWarningDialog("Validation Error", ex.getMessage());
-        } catch (AttendanceRecordNotFoundException ex) {
-            tableModel.setRowCount(0);
-            showMessageDialog("Info", ex.getMessage());
-        } catch (SQLException ex) {
-            showErrorDialog("Database Error", "Failed to load attendance: " + ex.getMessage());
-        }
-    }
-
-    private void updateTable(List<Attendance> records) {
-        tableModel.setRowCount(0);
-        for (Attendance record : records) {
-            tableModel.addRow(new Object[]{
-                record.getId(),
-                record.getStudentId(),
-                record.getDate(),
-                record.getStatus()
-            });
-        }
-    }
-
-    private void editAttendance() {
-        int selectedRow = attendanceTable.getSelectedRow();
-        if (selectedRow < 0) {
-            return;
-        }
-
-        int id = (Integer) tableModel.getValueAt(selectedRow, 0);
-        String currentStatus = (String) tableModel.getValueAt(selectedRow, 3);
-
-        // Create dialog for editing
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Edit Attendance", true);
-        dialog.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-
-        gbc.gridx = 0; gbc.gridy = 0;
-        dialog.add(new JLabel("Status:"), gbc);
-        gbc.gridx = 1;
-        JComboBox<String> statusCombo = new JComboBox<>(new String[]{"PRESENT", "ABSENT"});
-        statusCombo.setSelectedItem(currentStatus);
-        dialog.add(statusCombo, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 2;
-        JButton saveButton = new JButton("Save");
-        JButton cancelButton = new JButton("Cancel");
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
-        dialog.add(buttonPanel, gbc);
-
-        saveButton.addActionListener(e -> {
+        clearButton.addActionListener(e -> {
+            searchField.setText("");
+            dateFilterField.setText("");
             try {
-                String newStatus = (String) statusCombo.getSelectedItem();
-                
-                // Chain of Responsibility: Validate input
+                refreshData();
+            } catch (SQLException ex) {
+                showErrorDialog("Database Error", "Failed to refresh: " + ex.getMessage());
+            }
+        });
+
+        // Real-time search/filter
+        DocumentListener filterListener = new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) {
+                filterRecords();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                filterRecords();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                filterRecords();
+            }
+        };
+        searchField.getDocument().addDocumentListener(filterListener);
+        dateFilterField.getDocument().addDocumentListener(filterListener);
+
+        // Initial Load
+        try {
+            refreshData();
+        } catch (SQLException ex) {
+            showErrorDialog("Database Error", "Failed to load data: " + ex.getMessage());
+        }
+    }
+
+    private void handleMarkAttendance() {
+        try {
+            List<Student> students = facade.getAllStudents();
+            AttendanceFormDialog dialog = new AttendanceFormDialog(
+                    (Frame) SwingUtilities.getWindowAncestor(this),
+                    students);
+
+            if (dialog.showDialog()) {
+                String studentId = dialog.getSelectedStudentId();
+                String date = dialog.getDate();
+                String status = dialog.getStatus();
+
+                // Validate
                 ValidationHandler validator = ValidationChainBuilder.buildAttendanceValidationChain();
-                validator.validate("status", newStatus);
+                validator.validate("studentId", studentId);
+                validator.validate("date", date);
+                validator.validate("status", status);
 
-                facade.updateAttendance(id, newStatus);
-                showMessageDialog("Success", "Attendance updated successfully!");
-                dialog.dispose();
-                
-                // Refresh table
-                int studentIdCol = 1;
-                String studentId = (String) tableModel.getValueAt(selectedRow, studentIdCol);
-                if (studentId != null && !studentId.isEmpty()) {
-                    loadStudentAttendance(studentId);
-                } else {
-                    loadAllAttendance();
-                }
-            } catch (InvalidInputException ex) {
-                showWarningDialog("Validation Error", ex.getMessage());
-            } catch (SQLException ex) {
-                showErrorDialog("Database Error", "Failed to update attendance: " + ex.getMessage());
+                facade.markAttendance(studentId, date, status);
+                showMessageDialog("Success", "Attendance marked!");
+                refreshData();
             }
-        });
-
-        cancelButton.addActionListener(e -> dialog.dispose());
-
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
+        } catch (Exception ex) {
+            showErrorDialog("Error", ex.getMessage());
+        }
     }
 
-    private void deleteAttendance() {
+    private void handleEdit() {
         int selectedRow = attendanceTable.getSelectedRow();
-        if (selectedRow < 0) {
+        if (selectedRow == -1) {
+            showWarningDialog("Selection Required", "Please select a record to edit.");
             return;
         }
 
         int id = (Integer) tableModel.getValueAt(selectedRow, 0);
-        String studentId = (String) tableModel.getValueAt(selectedRow, 1);
-        String date = (String) tableModel.getValueAt(selectedRow, 2);
-        String status = (String) tableModel.getValueAt(selectedRow, 3);
+        String currentStatus = (String) tableModel.getValueAt(selectedRow, 4);
+
+        // Simple dialog for status update since that's the main editable field
+        String[] options = { "PRESENT", "ABSENT" };
+        String newStatus = (String) JOptionPane.showInputDialog(
+                this,
+                "Update Status:",
+                "Edit Attendance",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                currentStatus);
+
+        if (newStatus != null) {
+            try {
+                facade.updateAttendance(id, newStatus);
+                showMessageDialog("Success", "Attendance updated!");
+                refreshData();
+            } catch (Exception ex) {
+                showErrorDialog("Error", ex.getMessage());
+            }
+        }
+    }
+
+    private void handleDelete() {
+        int selectedRow = attendanceTable.getSelectedRow();
+        if (selectedRow == -1) {
+            showWarningDialog("Selection Required", "Please select a record to delete.");
+            return;
+        }
+
+        int id = (Integer) tableModel.getValueAt(selectedRow, 0);
+        String name = (String) tableModel.getValueAt(selectedRow, 2);
+        String date = (String) tableModel.getValueAt(selectedRow, 3);
 
         int confirm = JOptionPane.showConfirmDialog(
-            this,
-            "Are you sure you want to delete this attendance record?\n" +
-            "Student ID: " + studentId + "\n" +
-            "Date: " + date + "\n" +
-            "Status: " + status,
-            "Confirm Delete",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE
-        );
+                this,
+                "Delete attendance record for " + name + " on " + date + "?",
+                "Confirm Delete",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
             try {
                 facade.deleteAttendance(id);
-                showMessageDialog("Success", "Attendance record deleted successfully!");
-                
-                // Refresh table
-                if (studentId != null && !studentId.isEmpty()) {
-                    loadStudentAttendance(studentId);
-                } else {
-                    loadAllAttendance();
-                }
+                showMessageDialog("Success", "Record deleted!");
+                refreshData();
             } catch (SQLException ex) {
-                showErrorDialog("Database Error", "Failed to delete attendance: " + ex.getMessage());
+                showErrorDialog("Database Error", ex.getMessage());
             }
         }
+    }
+
+    /**
+     * Refreshes all data: Student Map and Attendance Records.
+     */
+    private void refreshData() throws SQLException {
+        // 1. Refresh Student Map (ID -> Name)
+        studentNameMap.clear();
+        List<Student> students = facade.getAllStudents();
+        for (Student s : students) {
+            studentNameMap.put(s.getStudentId(), s.getName());
+        }
+
+        // 2. Load Attendance Records
+        allRecords = facade.getAllAttendance();
+
+        // 3. Apply Filters
+        filterRecords();
+    }
+
+    private void filterRecords() {
+        String search = searchField.getText().trim().toLowerCase();
+        String dateFilter = dateFilterField.getText().trim();
+
+        if (allRecords == null)
+            return;
+
+        List<Attendance> filtered = new ArrayList<>();
+        int presentCount = 0;
+        int absentCount = 0;
+
+        for (Attendance r : allRecords) {
+            String sName = studentNameMap.getOrDefault(r.getStudentId(), "Unknown");
+
+            boolean matchesSearch = search.isEmpty() ||
+                    r.getStudentId().toLowerCase().contains(search) ||
+                    sName.toLowerCase().contains(search) ||
+                    r.getStatus().toLowerCase().contains(search);
+
+            boolean matchesDate = dateFilter.isEmpty() ||
+                    r.getDate().contains(dateFilter);
+
+            if (matchesSearch && matchesDate) {
+                filtered.add(r);
+                if ("PRESENT".equalsIgnoreCase(r.getStatus()))
+                    presentCount++;
+                if ("ABSENT".equalsIgnoreCase(r.getStatus()))
+                    absentCount++;
+            }
+        }
+
+        // Update Table
+        tableModel.setRowCount(0);
+        for (Attendance r : filtered) {
+            tableModel.addRow(new Object[] {
+                    r.getId(),
+                    r.getStudentId(),
+                    studentNameMap.getOrDefault(r.getStudentId(), "Unknown"),
+                    r.getDate(),
+                    r.getStatus()
+            });
+        }
+
+        // Update Stats
+        statsLabel.setText(String.format("Shown: %d (P: %d, A: %d)",
+                filtered.size(), presentCount, absentCount));
     }
 }

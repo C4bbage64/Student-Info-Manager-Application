@@ -15,6 +15,13 @@ import java.util.List;
 public class StudentDAO {
 
     /**
+     * Checks if a student exists by ID.
+     */
+    public boolean exists(String studentId) throws SQLException {
+        return findById(studentId) != null;
+    }
+
+    /**
      * Creates a new student in the database.
      */
     public void create(Student student) throws SQLException, DuplicateStudentException {
@@ -91,7 +98,7 @@ public class StudentDAO {
         String sql = "SELECT * FROM students";
 
         try (Statement stmt = DatabaseConnection.getInstance().getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+                ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
                 students.add(mapResultSetToStudent(rs));
@@ -162,11 +169,11 @@ public class StudentDAO {
      */
     public int getMaxStudentIdNumber() throws SQLException {
         String sql = "SELECT MAX(CAST(SUBSTR(student_id, 4) AS INTEGER)) " +
-                     "FROM students WHERE student_id LIKE 'STU%'";
-        
+                "FROM students WHERE student_id LIKE 'STU%'";
+
         try (Statement stmt = DatabaseConnection.getInstance().getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            
+                ResultSet rs = stmt.executeQuery(sql)) {
+
             if (rs.next()) {
                 int maxNumber = rs.getInt(1);
                 // If no matching IDs found, rs.getInt(1) returns 0
@@ -187,14 +194,13 @@ public class StudentDAO {
             // Column might not exist in older databases, default to ENROLLED
             enrollmentStatus = "ENROLLED";
         }
-        
+
         return new Student(
-            rs.getString("name"),
-            rs.getInt("age"),
-            rs.getString("student_id"),
-            rs.getString("course"),
-            rs.getString("email"),
-            enrollmentStatus
-        );
+                rs.getString("name"),
+                rs.getInt("age"),
+                rs.getString("student_id"),
+                rs.getString("course"),
+                rs.getString("email"),
+                enrollmentStatus);
     }
 }
