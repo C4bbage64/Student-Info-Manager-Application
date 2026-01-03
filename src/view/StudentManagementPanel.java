@@ -9,9 +9,12 @@ import model.Student;
 import exceptions.*;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,11 +31,15 @@ public class StudentManagementPanel extends BasePanel implements StudentDataObse
     private DefaultTableModel tableModel;
     private JTable studentTable;
     
+    // Store all students in memory for filtering
+    private List<Student> allStudents;
+    
     // Toolbar buttons
     private JButton addButton;
     private JButton editButton;
     private JButton deleteButton;
     private JButton refreshButton;
+    private JButton clearButton;
     
     // Search/filter
     private JTextField searchField;
@@ -71,7 +78,12 @@ public class StudentManagementPanel extends BasePanel implements StudentDataObse
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         topPanel.add(new JLabel("Search:"));
         searchField = new JTextField(20);
+        searchField.setToolTipText("Search across all fields (ID, Name, Course, Email, Status)");
         topPanel.add(searchField);
+        
+        clearButton = new JButton("Clear");
+        setComponentStyles(clearButton);
+        topPanel.add(clearButton);
         
         topPanel.add(new JLabel("Sort by:"));
         String[] criteria = {"student_id", "name", "age", "course"};
@@ -170,12 +182,32 @@ public class StudentManagementPanel extends BasePanel implements StudentDataObse
             }
         });
         
-        // Search functionality
-        searchField.addActionListener(e -> handleSearch());
-        JButton searchButton = new JButton("Search");
-        setComponentStyles(searchButton);
-        topPanel.add(searchButton);
-        searchButton.addActionListener(e -> handleSearch());
+        clearButton.addActionListener(e -> {
+            searchField.setText("");
+            try {
+                refreshStudentTable();
+            } catch (SQLException ex) {
+                showErrorDialog("Database Error", "Failed to refresh: " + ex.getMessage());
+            }
+        });
+        
+        // Real-time search functionality with DocumentListener
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                filterStudents();
+            }
+            
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                filterStudents();
+            }
+            
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                filterStudents();
+            }
+        });
         
         // Initial load
         try {
@@ -274,60 +306,48 @@ public class StudentManagementPanel extends BasePanel implements StudentDataObse
         }
     }
     
-    private void handleSearch() {
-        String searchTerm = searchField.getText().trim();
+    /**
+     * Filters students in real-time based on search term.
+     * Searches across all fields: Student ID, Name, Course, Email, and Status.
+     * Case-insensitive partial matching.
+     */
+    private void filterStudents() {
+        String searchTerm = searchField.getText().trim().toLowerCase();
         
-        if (searchTerm.isEmpty()) {
-            try {
-                refreshStudentTable();
-            } catch (SQLException ex) {
-                showErrorDialog("Database Error", "Failed to refresh: " + ex.getMessage());
-            }
+        if (allStudents == null) {
             return;
         }
         
-        try {
-            List<Student> students = facade.searchStudentsByName(searchTerm);
-            
-            // Apply sorting
-            String selectedCriteria = (String) sortComboBox.getSelectedItem();
-            SortStrategy strategy = StudentSortContext.getStrategyByName(selectedCriteria);
-            sortContext.setStrategy(strategy);
-            students = sortContext.sortStudents(students);
-            
-            // Update table
-            tableModel.setRowCount(0);
-            for (Student student : students) {
-                tableModel.addRow(new Object[]{
-                    student.getStudentId(),
-                    student.getName(),
-                    student.getAge(),
-                    student.getCourse(),
-                    student.getEmail() != null ? student.getEmail() : "",
-                    student.getEnrollmentStatus()
-                });
-            }
-            countLabel.setText("Found: " + students.size() + " student(s)");
-            
-        } catch (SQLException ex) {
-            showErrorDialog("Database Error", "Failed to search students: " + ex.getMessage());
-        }
-    }
-    
-    /**
-     * Refreshes the student table with all students, applying current sort.
-     */
-    private void refreshStudentTable() throws SQLException {
-        String selectedCriteria = (String) sortComboBox.getSelectedItem();
+        List<Student> filteredStudents = new ArrayList<>();
         
-        // Strategy Pattern: Use strategy to sort students
-        List<Student> students = facade.getAllStudents();
+        if (searchTerm.isEmpty()) {
+            // Show all students
+            filteredStudents.addAll(allStudents);
+        } else {
+            // Filter by search term across all fields
+            for (Student student : allStudents) {
+                boolean matches = 
+                    (student.getStudentId() != null && student.getStudentId().toLowerCase().contains(searchTerm)) ||
+                    (student.getName() != null && student.getName().toLowerCase().contains(searchTerm)) ||
+                    (student.getCourse() != null && student.getCourse().toLowerCase().contains(searchTerm)) ||
+                    (student.getEmail() != null && student.getEmail().toLowerCase().contains(searchTerm)) ||
+                    (student.getEnrollmentStatus() != null && student.getEnrollmentStatus().toLowerCase().contains(searchTerm));
+                
+                if (matches) {
+                    filteredStudents.add(student);
+                }
+            }
+        }
+        
+        // Apply sorting
+        String selectedCriteria = (String) sortComboBox.getSelectedItem();
         SortStrategy strategy = StudentSortContext.getStrategyByName(selectedCriteria);
         sortContext.setStrategy(strategy);
-        students = sortContext.sortStudents(students);
+        filteredStudents = sortContext.sortStudents(filteredStudents);
         
+        // Update table
         tableModel.setRowCount(0);
-        for (Student student : students) {
+        for (Student student : filteredStudents) {
             tableModel.addRow(new Object[]{
                 student.getStudentId(),
                 student.getName(),
@@ -337,7 +357,25 @@ public class StudentManagementPanel extends BasePanel implements StudentDataObse
                 student.getEnrollmentStatus()
             });
         }
-        countLabel.setText("Total Students: " + students.size());
+        
+        // Update count label
+        if (searchTerm.isEmpty()) {
+            countLabel.setText("Total Students: " + filteredStudents.size());
+        } else {
+            countLabel.setText("Found: " + filteredStudents.size() + " student(s)");
+        }
+    }
+    
+    /**
+     * Refreshes the student table with all students, applying current sort.
+     * Also updates the in-memory list for filtering.
+     */
+    private void refreshStudentTable() throws SQLException {
+        // Load all students from database
+        allStudents = facade.getAllStudents();
+        
+        // Apply filtering (which will also apply sorting and update table)
+        filterStudents();
     }
 }
 
