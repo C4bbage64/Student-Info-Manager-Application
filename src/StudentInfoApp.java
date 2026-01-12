@@ -14,16 +14,24 @@ import java.sql.SQLException;
 public class StudentInfoApp {
 
     public static void main(String[] args) {
+        // Check for headless mode
+        if (GraphicsEnvironment.isHeadless()) {
+            System.err.println("ERROR: Cannot run GUI application in headless mode.");
+            System.err.println("DISPLAY variable: " + System.getenv("DISPLAY"));
+            System.err.println("\nPlease ensure:");
+            System.err.println("1. DISPLAY environment variable is set (e.g., export DISPLAY=:0)");
+            System.err.println("2. X11 server is running");
+            System.err.println("3. You have permission to access the display (try: xhost +local:)");
+            System.exit(1);
+        }
+        
         // Initialize database connection
         try {
             DatabaseConnection.getInstance();
             System.out.println("Database connection established successfully.");
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, 
-                "Failed to connect to database: " + e.getMessage() + 
-                "\n\nMake sure sqlite-jdbc driver is in your classpath.",
-                "Database Error", 
-                JOptionPane.ERROR_MESSAGE);
+            System.err.println("Failed to connect to database: " + e.getMessage());
+            System.err.println("\nMake sure sqlite-jdbc driver is in your classpath.");
             System.exit(1);
         }
 
