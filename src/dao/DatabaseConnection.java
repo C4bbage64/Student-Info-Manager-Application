@@ -76,10 +76,22 @@ public class DatabaseConnection {
                 FOREIGN KEY (student_id) REFERENCES students(student_id)
             )""";
 
+        String createUsersTable = """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""";
+
+        String insertDefaultUser = "INSERT OR IGNORE INTO users (username, password) VALUES ('admin', 'admin123')";
+
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(createStudentsTable);
             stmt.execute(createAttendanceTable);
             stmt.execute(createPaymentsTable);
+            stmt.execute(createUsersTable);
+            stmt.execute(insertDefaultUser);
             
             // Migration: Add enrollment_status column if it doesn't exist
             migrateEnrollmentStatus();

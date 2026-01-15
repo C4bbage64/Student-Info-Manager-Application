@@ -1,14 +1,12 @@
 package view;
 
+import dao.UserDAO;
 import util.SessionManager;
 import state.ApplicationStateContext;
 import state.LoggedInState;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 
 /**
  * Login panel for user authentication.
@@ -16,32 +14,13 @@ import java.io.IOException;
  */
 public class LoginPanel extends BasePanel {
 
-    private String storedUsername;
-    private String storedPassword;
     private JTextField usernameField;
     private JPasswordField passwordField;
-
-    private static final String CREDENTIALS_FILE = "StudentInformationApplication/src/credentials.txt";
-    private static final String CREDENTIALS_FILE_ALT = "src/credentials.txt";
+    private UserDAO userDAO;
 
     public LoginPanel() {
-        loadCredentials();
+        userDAO = new UserDAO();
         setupUI();
-    }
-
-    private void loadCredentials() {
-        // Try primary path first, then alternative
-        String filePath = new java.io.File(CREDENTIALS_FILE).exists() ? CREDENTIALS_FILE : CREDENTIALS_FILE_ALT;
-        
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            storedUsername = reader.readLine();
-            storedPassword = reader.readLine();
-        } catch (IOException e) {
-            e.printStackTrace();
-            showErrorDialog("Error", "Error reading credentials file: " + e.getMessage() + 
-                    "\nPath: " + new java.io.File(CREDENTIALS_FILE).getAbsolutePath());
-            System.exit(1);
-        }
     }
 
     private void setupUI() {
@@ -89,10 +68,15 @@ public class LoginPanel extends BasePanel {
 
         // Action listener for login
         loginButton.addActionListener(e -> {
-            String username = usernameField.getText();
+            String username = usernameField.getText().trim();
             String password = new String(passwordField.getPassword());
 
-            if (storedUsername.equals(username) && storedPassword.equals(password)) {
+            if (username.isEmpty() || password.isEmpty()) {
+                showErrorDialog("Error", "Please enter both username and password!");
+                return;
+            }
+
+            if (userDAO.validateUser(username, password)) {
                 // Use Singleton to track session
                 SessionManager.getInstance().login(username);
 
