@@ -18,6 +18,8 @@ public class LoginPanel extends BasePanel {
 
     private String storedUsername;
     private String storedPassword;
+    private JTextField usernameField;
+    private JPasswordField passwordField;
 
     private static final String CREDENTIALS_FILE = "StudentInformationApplication/src/credentials.txt";
     private static final String CREDENTIALS_FILE_ALT = "src/credentials.txt";
@@ -63,11 +65,11 @@ public class LoginPanel extends BasePanel {
 
         // Username
         JLabel usernameLabel = new JLabel("Username:");
-        JTextField usernameField = new JTextField(20);
+        usernameField = new JTextField(20);
         
         // Password
         JLabel passwordLabel = new JLabel("Password:");
-        JPasswordField passwordField = new JPasswordField(20);
+        passwordField = new JPasswordField(20);
         
         // Login button
         JButton loginButton = new JButton("Login");
@@ -103,6 +105,14 @@ public class LoginPanel extends BasePanel {
                 if (parent instanceof JPanel) {
                     JPanel basePanel = (JPanel) parent;
                     CardLayout cardLayout = (CardLayout) basePanel.getLayout();
+                    
+                    // Refresh welcome label on MainPanel
+                    for (Component comp : basePanel.getComponents()) {
+                        if (comp instanceof MainPanel) {
+                            ((MainPanel) comp).refreshWelcomeLabel();
+                        }
+                    }
+                    
                     cardLayout.show(basePanel, "Main");
                 }
             } else {
@@ -112,5 +122,18 @@ public class LoginPanel extends BasePanel {
 
         // Allow Enter key to trigger login
         passwordField.addActionListener(e -> loginButton.doClick());
+    }
+
+    /**
+     * Clears the username and password fields.
+     * Called when user logs out to reset the login form.
+     */
+    public void clearFields() {
+        if (usernameField != null) {
+            usernameField.setText("");
+        }
+        if (passwordField != null) {
+            passwordField.setText("");
+        }
     }
 }
